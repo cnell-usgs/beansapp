@@ -101,11 +101,13 @@ shinyServer(function(input,output){
                   se=values$summaryoutput$SE,
                   sd=values$summaryoutput$SD,
                   ci=values$summaryoutput$CI)
+    err.melt<-melt(values$summaryoutput%>%mutate(SEm=mean+SE, SDm=mean+SD)%>%dplyr::select(SEm,SDm,upper.CI))
     #plot
     ggplot(values$summaryoutput, aes(x=Treatment, y=mean))+
       geom_bar(stat='identity', fill='grey')+
       theme_mooney()+theme(legend.position='none')+
-      geom_errorbar(aes(ymin=mean-error, ymax=mean+error), width=.2)
+      geom_errorbar(aes(ymin=mean-error, ymax=mean+error), width=.2)+
+      ylim(NA,max(err.melt$value)*1.1)
 
   })
   
@@ -114,7 +116,11 @@ shinyServer(function(input,output){
     validate(
       need(input$getdata, "Enter values and press 'Run Data' to generate summary data")
     )
-    rhandsontable(values$summaryoutput%>%dplyr::select(-error, -sed, -CI), readOnly=TRUE)
+    siggy<-expression(paste(sigma))
+    rhandsontable(values$summaryoutput%>%dplyr::select(-error, -sed, -CI, -Treatment),
+                  colHeaders=c('N', 'var', 'mean', 'SD', 'SE', 'df', 'T', 'lower.CI', 'upper.CI'),
+                  rowHeaders=c(values$summaryoutput$Treatment[1],values$summaryoutput$Treatment[2]),rowHeaderWidth=130,
+                  readOnly=TRUE)
   })
   
   output$anovatable<-renderPrint({
