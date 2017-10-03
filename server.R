@@ -1,9 +1,7 @@
 library(shiny)
-library(ggplot2)
 library(rhandsontable)
-library(dplyr)
 library(devtools)
-library(readr)
+library(tidyverse)
 library(RCurl)
 
 ttable<-read.csv("https://raw.githubusercontent.com/collnell/beans/master/ttable.csv")#ttable
@@ -36,11 +34,11 @@ shinyServer(function(input,output){
   
   ##generate input tables
   output$table1 = renderRHandsontable({
-    pvar1<-paste0("Proportion(",input$var1,")")
+    pvar1<-paste0("Prop(",input$var1,")")
     rhandsontable(values$df1%>%dplyr::select(variable1, variable2, Proportion1),width=500,height=485,colHeaders =c(input$var1,input$var2,pvar1))
   })
   output$table2 = renderRHandsontable({
-    pvar1<-paste0("Proportion(",input$var1,")")
+    pvar1<-paste0("Prop(",input$var1,")")
     rhandsontable(values$df2%>%dplyr::select(variable1, variable2, Proportion1),width=500,height=485,colHeaders =c(input$var1,input$var2,pvar1))
   })
   
@@ -66,24 +64,31 @@ shinyServer(function(input,output){
     tresultvar1<-t.test(x = values$df1$Proportion1)
     tresultvar2<-t.test(x=values$df2$Proportion1)
     
-    values$aov.model<-aov(Proportion1~Treatment,data=values$df_data)
+    values$aov.model<-aov(lm(Proportion1~Treatment,data=values$df_data))
     conout<-confint(values$aov.model)
     
     ci.df<-data.frame(LCL = conout[1,1], conout[2,1],
                       UCL = conout[1,2], conout[2,2])
   
+    values$ttout<-t.test(values$df1$Proportion1, values$df2$Proportion1)
     
-    values$summaryoutput<-values$df_data_all%>%na.omit()%>%
+    values$summaryoutput<-values$df_data_all%>%
+      na.omit()%>%
       group_by(Treatment)%>%
-      summarize(mean=mean(Proportion1),
-                N = length(Proportion1),
+      summarize(N = length(Proportion1),
+                VAR=var(Proportion1), 
+                mean=mean(Proportion1),
                 SD = sd(Proportion1),
                 SE= se(Proportion1))%>%
-      mutate(LCL = c(tresultvar1$conf.int[1], tresultvar2$conf.int[1]),
-             UCL = c(tresultvar1$conf.int[2], tresultvar2$conf.int[2]), 
-             CI = UCL - LCL, CI.fig =CI/2)#%>%
-      #mutate(lower.CI = mean - qt(1 - (0.05 / 2), N - 1) * SE,
-       #      upper.CI = mean + qt(1 - (0.05 / 2), N - 1) * SE)
+      mutate(df = N-1, 
+            sed = SD/sqrt(N),
+            `T` = qt(.975, df),
+            error=sed*`T`,
+            CI = `T`*SE, 
+            lower.CI = mean-CI, 
+            upper.CI = mean+CI)
+    
+    
   })
   
   ##barplot
@@ -92,23 +97,16 @@ shinyServer(function(input,output){
       need(input$getdata, "Enter values and press 'Run Data' to visualize treatment means")
     )
     
-    error<-switch(input$errortype,##reactive error bars
+    values$summaryoutput$error<-switch(input$errortype,##reactive error bars
                   se=values$summaryoutput$SE,
                   sd=values$summaryoutput$SD,
-                  ci=values$summaryoutput$CI.fig)
+                  ci=values$summaryoutput$CI)
     #plot
-    if (error == 'ci'){
-      ggplot(values$summaryoutput, aes(x=Treatment, y=mean))+
-        geom_bar(stat='identity', fill='grey')+
-        theme_mooney()+theme(legend.position='none')+
-        geom_errorbar(aes(ymin=LCL, ymax=UCL), width=.2)
-      
-    } else {
     ggplot(values$summaryoutput, aes(x=Treatment, y=mean))+
       geom_bar(stat='identity', fill='grey')+
       theme_mooney()+theme(legend.position='none')+
       geom_errorbar(aes(ymin=mean-error, ymax=mean+error), width=.2)
-    }
+
   })
   
   ##summary stats
@@ -116,7 +114,7 @@ shinyServer(function(input,output){
     validate(
       need(input$getdata, "Enter values and press 'Run Data' to generate summary data")
     )
-    rhandsontable(values$summaryoutput%>%dplyr::select(-CI.fig), readOnly=TRUE)
+    rhandsontable(values$summaryoutput%>%dplyr::select(-error, -sed, -CI), readOnly=TRUE)
   })
   
   output$anovatable<-renderPrint({
@@ -128,7 +126,8 @@ shinyServer(function(input,output){
     p1<-paste0("Proportion (",input$var1,")")
     p2<-paste0("Proportion (",input$var2,")")
   
-    aov.model<-aov(Proportion1~Treatment,data=values$df_data)
+    aov.model<-aov(lm(Proportion1~Treatment,data=values$df_data))
+    print(aov.model)
     br()
     print(summary(aov.model))
   })
