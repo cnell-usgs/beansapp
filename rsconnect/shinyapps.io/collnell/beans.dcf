@@ -1,0 +1,11 @@
+name: beans
+title: beans
+account: collnell
+server: shinyapps.io
+appId: 221383
+bundleId: 1008075
+url: https://collnell.shinyapps.io/beans/
+when: 1507007681.80392
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: ttable.csv
