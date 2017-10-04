@@ -1,9 +1,11 @@
 library(shiny)
 library(rhandsontable)
 library(devtools)
-library(tidyverse)
 library(RCurl)
 library(reshape2)
+library(dplyr)
+library(ggplot2)
+
 ttable<-read.csv("https://raw.githubusercontent.com/collnell/beans/master/ttable.csv")#ttable
 source_url("https://raw.githubusercontent.com/collnell/R_vis/master/theme_mooney.R")#ggplot theme
 
