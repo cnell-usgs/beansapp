@@ -1,11 +1,10 @@
 name: beans
-title: beanfix
+title: beaner
 account: collnell
 server: shinyapps.io
 appId: 221383
-bundleId: 1011318
+bundleId: 1011343
 url: https://collnell.shinyapps.io/beans/
-when: 1507152588.30743
+when: 1507153309.8222
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: ttable.csv
