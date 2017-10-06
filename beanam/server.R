@@ -113,9 +113,14 @@ shinyServer(function(input,output){
       labs(y=paste0('Mean ', values$pvar1))
 
   })
+  
+  ##histogram of entered data
   output$histo<-renderPlot({
+    validate(
+      need(input$getdata, "Enter values and press 'Run Data' to see data distribution")
+    )
     
-    if(input$showmean ==TRUE){
+    if(input$showmean ==TRUE){ ##add line for means
       mean1<-values$summaryoutput$mean[1]
       mean2<-values$summaryoutput$mean[2]
       
@@ -131,6 +136,30 @@ shinyServer(function(input,output){
         geom_density(aes(fill=Treatment),alpha=0.5)+theme_minimal()+
         theme(legend.position='none')+labs(x=values$pvar1, y= 'Frequency')
     }
+  })
+  ##student's t distribution
+  output$tdist<-renderPlot({
+    #x<-seq(-4,4, length=100)
+    #hx<-dnorm(x)
+    Tval<-qt(.975, input$dfs)
+    Tval<-qt(1-(input$alpha/2), input$dfs)
+    CI<-1-input$alpha
+    CI.end<-(1-CI)/2
+  
+    
+    ggplot(data.frame(x=c(-4,4)), aes(x=x))+
+      stat_function(fun=dt, args=list(df=input$dfs), size=2, color='red')+
+      theme_minimal()+labs(x='Dependent variable',y='Frequency')+
+      geom_vline(aes(xintercept=0+Tval), lty='dashed', size=1)+
+      geom_vline(aes(xintercept=0-Tval), lty='dashed', size=1)+
+      geom_segment(aes(x=0-Tval, xend=0+Tval, y=.45, yend=.45), size=1, arrow = arrow(length = unit(0.4, "cm")))+
+      geom_segment(aes(x=0+Tval, xend=0-Tval, y=.45, yend=.45), size=1, arrow = arrow(length = unit(0.4, "cm")))+
+      ylim(0,.5)+theme(axis.text=element_blank())+
+      annotate('text', x=0, y=0.47, label='T x SE', size=7)+
+      annotate('text', x=0, y=0.05, label=paste(CI), size=6)+
+      annotate('text', x=0-Tval, y=0.05, label=paste(CI.end), size=6, hjust=1.5)+
+      annotate('text', x=0+Tval, y=0.05, label=paste(CI.end), size=6, hjust=-.5)+
+      annotate('text', x=0, y=0.42, label=paste0('T = ',round(Tval,2)), size=6)
     
     
   })
@@ -147,7 +176,15 @@ shinyServer(function(input,output){
   })
   
   ##equations for calculations
-
+  output$calcs<-renderUI({
+    withMathJax(
+      helpText($$\( \frac{1}{n} \sum_{i=i}^{n} x_{i} \))
+    )
+    
+  })
+  
+  
+  ##anova table
   output$anovatable<-renderPrint({
     validate(
       need(input$getdata, "Enter values and press 'Run Data' for ANOVA test results")
@@ -156,7 +193,7 @@ shinyServer(function(input,output){
     v2<-paste0(input$var2)
     p1<-paste0("Proportion (",input$var1,")")
     p2<-paste0("Proportion (",input$var2,")")
-  
+    
     aov.model<-aov(lm(Proportion1~Treatment,data=values$df_data))
     print(aov.model)
     br()
